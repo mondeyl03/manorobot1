@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exoesqueleto para el apoyo de la movilidad</title>
+<style>
+  body {
+    background-color: #000;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 20px;
+  }
+  h1 {
+    color: #00ff88;
+    margin-bottom: 20px;
+  }
+  .finger-control {
+    background-color: #111;
+    border-radius: 15px;
+    padding: 15px;
+    margin: 10px auto;
+    width: 90%;
+    max-width: 420px;
+    box-shadow: 0 0 10px #00ff88;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 8px;
+  }
+  input[type="range"] {
+    width: 55%;
+  }
+  button {
+    background-color: #00ff88;
+    color: black;
+    border: none;
+    padding: 8px 12px;
+    margin: 4px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  button:hover {
+    background-color: #00cc6f;
+  }
+  #commands {
+    margin-top: 20px;
+    border-top: 2px solid #00ff88;
+    padding-top: 10px;
+    text-align: left;
+    display: inline-block;
+  }
+  #micStatus {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #00ff88;
+  }
+</style>
+</head>
+<body>
+
+<h1>Exoesqueleto para el apoyo de la movilidad</h1>
+
+<div id="controls"></div>
+
+<br>
+<button onclick="sendCommand('abrir')">Abrir mano</button>
+<button onclick="sendCommand('cerrar')">Cerrar mano</button>
+<br><br>
+<button id="micBtn" onclick="startVoiceRecognition()">🎤 Hablar</button>
+<div id="micStatus"></div>
+
+<div id="commands">
+  <h3>Comandos de voz disponibles:</h3>
+  <ul>
+    <li>abrir mano</li>
+    <li>cerrar mano</li>
+    <li>mover [dedo] a [angulo] grados</li>
+    <li>mover [dedo] a [angulo] grados [n] veces cada [x] segundos</li>
+    <li>ejemplo: mover indice a 30 grados 5 veces cada 2 segundos</li>
+  </ul>
+</div>
+
+<script>
+const esp32_ip = "http://192.168.100.121"; // Tu IP del ESP32
+
+const fingers = [
+  { name: "pulgar", max: 25, min: 0 },
+  { name: "indice", max: 0, min: 65 },
+  { name: "medio", max: 0, min: 45 },
+  { name: "anular", max: 45, min: 0 },
+  { name: "menique", max: 40, min: 0 }
+];
+
+const controlsDiv = document.getElementById("controls");
+
+fingers.forEach(finger => {
+  const div = document.createElement("div");
+  div.className = "finger-control";
+  div.innerHTML = `
+    <span>${finger.name.toUpperCase()}</span>
+    <button onclick="adjust('${finger.name}', -1)">◀</button>
+    <input type="range" id="${finger.name}" min="${Math.min(finger.min, finger.max)}" max="${Math.max(finger.min, finger.max)}" value="${finger.min}" step="1" oninput="moveFinger('${finger.name}', this.value)">
+    <button onclick="adjust('${finger.name}', 1)">▶</button>
+    <button onclick="pauseFinger('${finger.name}')">Pausa</button>
+    <span id="${finger.name}-val">0°</span>
+  `;
+  controlsDiv.appendChild(div);
+});
+
+function moveFinger(finger, angle) {
+  document.getElementById(`${finger}-val`).innerText = `${angle}°`;
+  fetch(`${esp32_ip}/mover?dedo=${finger}&angulo=${angle}`).catch(console.error);
+}
+
+function adjust(finger, step) {
+  const slider = document.getElementById(finger);
+  let newVal = parseInt(slider.value) + step;
+  if (newVal < slider.min) newVal = slider.min;
+  if (newVal > slider.max) newVal = slider.max;
+  slider.value = newVal;
+  moveFinger(finger, newVal);
+}
+
+function pauseFinger(finger) {
+  fetch(`${esp32_ip}/pausar?dedo=${finger}`).catch(console.error);
+}
+
+function sendCommand(cmd) {
+  fetch(`${esp32_ip}/${cmd}`).catch(console.error);
+}
+
+// 🎤 Reconocimiento de voz
+function startVoiceRecognition() {
+  const micStatus = document.getElementById("micStatus");
+  micStatus.innerText = "Escuchando...";
+  micStatus.style.color = "#ff0";
+
+  try {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = "es-ES";
+    recognition.start();
+    recognition.onresult = event => {
+      const voiceText = event.results[0][0].transcript.toLowerCase();
+      micStatus.innerText = `Comando: "${voiceText}"`;
+      micStatus.style.color = "#00ff88";
+      interpretCommand(voiceText);
+    };
+    recognition.onerror = e => {
+      micStatus.innerText = "Error con el microfono o permisos";
+      micStatus.style.color = "red";
+    };
+    recognition.onend = () => micStatus.innerText = "";
+  } catch (err) {
+    micStatus.innerText = "Tu navegador no soporta reconocimiento de voz";
+    micStatus.style.color = "red";
+  }
+}
+
+// 🧠 Analisis del comando de voz
+function interpretCommand(text) {
+  if (text.includes("abrir")) return sendCommand("abrir");
+  if (text.includes("cerrar")) return sendCommand("cerrar");
+
+  const moveMatch = text.match(/mover (\w+) a (\d+) grados(?: (\d+) veces cada (\d+) (segundos|minutos|horas))?/);
+  if (moveMatch) {
+    const [, finger, angle, reps, delay, unit] = moveMatch;
+    let delayMs = 1000;
+    if (unit === "minutos") delayMs = 60000;
+    if (unit === "horas") delayMs = 3600000;
+    const repetitions = reps ? parseInt(reps) : 1;
+    const interval = delay ? delayMs * parseInt(delay) : 1000;
+
+    let count = 0;
+    const intervalId = setInterval(() => {
+      moveFinger(finger, angle);
+      count++;
+      if (count >= repetitions) clearInterval(intervalId);
+    }, interval);
+  }
+}
+</script>
+
+</body>
+</html>

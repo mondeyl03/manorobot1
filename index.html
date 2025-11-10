@@ -1,188 +1,265 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Exoesqueleto para el apoyo de la movilidad</title>
-<style>
-  body {
-    background-color: #000;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 20px;
-  }
-  h1 {
-    color: #00ff88;
-    margin-bottom: 20px;
-  }
-  .finger-control {
-    background-color: #111;
-    border-radius: 15px;
-    padding: 15px;
-    margin: 10px auto;
-    width: 90%;
-    max-width: 420px;
-    box-shadow: 0 0 10px #00ff88;
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    gap: 8px;
-  }
-  input[type="range"] {
-    width: 55%;
-  }
-  button {
-    background-color: #00ff88;
-    color: black;
-    border: none;
-    padding: 8px 12px;
-    margin: 4px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
-  }
-  button:hover {
-    background-color: #00cc6f;
-  }
-  #commands {
-    margin-top: 20px;
-    border-top: 2px solid #00ff88;
-    padding-top: 10px;
-    text-align: left;
-    display: inline-block;
-  }
-  #micStatus {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #00ff88;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Control Mano Robótica</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #f7faff, #e9f0ff);
+      margin: 0; padding: 0;
+      text-align: center; color: #222;
+    }
+    h1 {
+      background: linear-gradient(90deg, #0078d7, #00a2ff);
+      color: white; padding: 16px; margin: 0;
+      font-size: 22px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    }
+    .panel {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 650px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #0078d7;
+      color: white; border: none;
+      padding: 10px 18px; margin: 6px;
+      border-radius: 6px; cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #005ea0; }
+    .slider-container {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin: 8px 0;
+    }
+    .slider-label {
+      width: 70px; text-align: left; font-weight: 600;
+    }
+    .slider {
+      flex: 1; margin: 0 10px;
+    }
+    .arrow {
+      background: #0078d7; color: white;
+      width: 30px; height: 30px;
+      border: none; border-radius: 50%;
+      cursor: pointer; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .arrow:hover { background: #005ea0; }
+    .value {
+      min-width: 45px; text-align: center;
+      font-weight: bold; color: #0078d7;
+    }
+    .section-title {
+      color: #0078d7;
+      font-weight: 700;
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .voice-btn {
+      background: crimson;
+      border-radius: 50%; width: 65px; height: 65px;
+      color: white; font-size: 26px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 10px auto; cursor: pointer;
+      box-shadow: 0 4px 10px rgba(220,0,0,0.3);
+      transition: all 0.2s;
+    }
+    .voice-btn.active {
+      background: #28a745;
+      box-shadow: 0 4px 10px rgba(40,167,69,0.4);
+    }
+    #vozLista {
+      font-size: 14px;
+      text-align: left;
+      display: inline-block;
+      margin-top: 8px;
+      color: #444;
+    }
+  </style>
 </head>
 <body>
+  <h1>Control de Mano Robótica</h1>
 
-<h1>Exoesqueleto para el apoyo de la movilidad</h1>
+  <!-- Control manual -->
+  <div class="panel">
+    <h2 class="section-title">Control Manual</h2>
+    <button onclick="sendCommand('/abrir')">Abrir Mano</button>
+    <button onclick="sendCommand('/cerrar')">Cerrar Mano</button>
+    <button onclick="sendCommand('/calibrar')">Calibrar Servos</button>
 
-<div id="controls"></div>
+    <div id="sliders"></div>
+  </div>
 
-<br>
-<button onclick="sendCommand('abrir')">Abrir mano</button>
-<button onclick="sendCommand('cerrar')">Cerrar mano</button>
-<br><br>
-<button id="micBtn" onclick="startVoiceRecognition()">🎤 Hablar</button>
-<div id="micStatus"></div>
+  <!-- Repeticiones manuales -->
+  <div class="panel">
+    <h2 class="section-title">Repeticiones Manuales</h2>
+    <div>
+      <label><input type="checkbox" value="pulgar"> Pulgar</label>
+      <label><input type="checkbox" value="indice"> Índice</label>
+      <label><input type="checkbox" value="medio"> Medio</label>
+      <label><input type="checkbox" value="anular"> Anular</label>
+      <label><input type="checkbox" value="menique"> Meñique</label>
+    </div>
+    <p>Veces: <input type="number" id="veces" value="3" min="1"></p>
+    <p>Cada: <input type="number" id="time" value="2" min="1">
+      <select id="unit">
+        <option value="s">segundos</option>
+        <option value="m">minutos</option>
+        <option value="h">horas</option>
+      </select>
+    </p>
+    <button onclick="iniciarRepeticiones()">Iniciar Repetición</button>
+    <button onclick="sendCommand('/pausar')">Pausar</button>
+  </div>
 
-<div id="commands">
-  <h3>Comandos de voz disponibles:</h3>
-  <ul>
-    <li>abrir mano</li>
-    <li>cerrar mano</li>
-    <li>mover [dedo] a [angulo] grados</li>
-    <li>mover [dedo] a [angulo] grados [n] veces cada [x] segundos</li>
-    <li>ejemplo: mover indice a 30 grados 5 veces cada 2 segundos</li>
-  </ul>
-</div>
+  <!-- Terapia -->
+  <div class="panel">
+    <h2 class="section-title">Terapia de Oposición</h2>
+    <p>Veces: <input type="number" id="terapiaVeces" value="2" min="1"></p>
+    <p>Cada: <input type="number" id="terapiaTiempo" value="3" min="1">
+      <select id="terapiaUnidad">
+        <option value="s">segundos</option>
+        <option value="m">minutos</option>
+        <option value="h">horas</option>
+      </select>
+    </p>
+    <button onclick="iniciarTerapia()">Iniciar Terapia</button>
+    <button onclick="sendCommand('/detenerTerapia')">Detener Terapia</button>
+  </div>
 
-<script>
-const esp32_ip = "http://192.168.100.121"; // Tu IP del ESP32
+  <!-- Comando de voz -->
+  <div class="panel">
+    <h2 class="section-title">Comando de Voz</h2>
+    <div id="micBtn" class="voice-btn" onclick="startVoice()">🎤</div>
+    <p id="vozEstado">Micrófono inactivo</p>
+    <div id="vozLista">
+      <b>Comandos disponibles:</b><br>
+      • “Abrir mano”<br>
+      • “Cerrar mano”<br>
+      • “Iniciar terapia” o “Terapia”<br>
+      • “Pausar” o “Detener”<br>
+      • “Mover [dedo] a [número] grados” (ej: mover índice a 30 grados)
+    </div>
+  </div>
 
-const fingers = [
-  { name: "pulgar", max: 25, min: 0 },
-  { name: "indice", max: 0, min: 65 },
-  { name: "medio", max: 0, min: 45 },
-  { name: "anular", max: 45, min: 0 },
-  { name: "menique", max: 40, min: 0 }
-];
+  <script>
+    const espIP = "http://172.19.123.247"; // Cambia si tu ESP32 tiene otra IP
+    const limits = { pulgar:25, indice:65, medio:45, anular:45, menique:40 };
 
-const controlsDiv = document.getElementById("controls");
+    // === Crear sliders ===
+    const slidersDiv = document.getElementById("sliders");
+    for (const [dedo, max] of Object.entries(limits)) {
+      const row = document.createElement("div");
+      row.className = "slider-container";
+      row.innerHTML = `
+        <div class="slider-label">${dedo.charAt(0).toUpperCase()+dedo.slice(1)}</div>
+        <button class="arrow" onclick="adjust('${dedo}', -1)">◀️</button>
+        <input type="range" min="0" max="${max}" value="0" id="${dedo}" class="slider" oninput="updateValue('${dedo}', this.value); moveFinger('${dedo}', this.value)">
+        <button class="arrow" onclick="adjust('${dedo}', 1)">▶️</button>
+        <div class="value" id="v_${dedo}">0°</div>
+      `;
+      slidersDiv.appendChild(row);
+    }
 
-fingers.forEach(finger => {
-  const div = document.createElement("div");
-  div.className = "finger-control";
-  div.innerHTML = `
-    <span>${finger.name.toUpperCase()}</span>
-    <button onclick="adjust('${finger.name}', -1)">◀</button>
-    <input type="range" id="${finger.name}" min="${Math.min(finger.min, finger.max)}" max="${Math.max(finger.min, finger.max)}" value="${finger.min}" step="1" oninput="moveFinger('${finger.name}', this.value)">
-    <button onclick="adjust('${finger.name}', 1)">▶</button>
-    <button onclick="pauseFinger('${finger.name}')">Pausa</button>
-    <span id="${finger.name}-val">0°</span>
-  `;
-  controlsDiv.appendChild(div);
-});
+    function updateValue(d, v) { document.getElementById(`v_${d}`).innerText = v + "°"; }
 
-function moveFinger(finger, angle) {
-  document.getElementById(`${finger}-val`).innerText = `${angle}°`;
-  fetch(`${esp32_ip}/mover?dedo=${finger}&angulo=${angle}`).catch(console.error);
-}
+    async function sendCommand(path) {
+      try { await fetch(`${espIP}${path}`); }
+      catch (err) { console.warn("No se pudo conectar con ESP32:", err); }
+    }
 
-function adjust(finger, step) {
-  const slider = document.getElementById(finger);
-  let newVal = parseInt(slider.value) + step;
-  if (newVal < slider.min) newVal = slider.min;
-  if (newVal > slider.max) newVal = slider.max;
-  slider.value = newVal;
-  moveFinger(finger, newVal);
-}
+    async function moveFinger(dedo, angulo) {
+      try { await fetch(`${espIP}/mover?dedo=${dedo}&angulo=${angulo}`); }
+      catch (err) { console.warn("Error moviendo dedo:", err); }
+    }
 
-function pauseFinger(finger) {
-  fetch(`${esp32_ip}/pausar?dedo=${finger}`).catch(console.error);
-}
+    function adjust(dedo, delta) {
+      const s = document.getElementById(dedo);
+      let val = parseInt(s.value) + delta;
+      val = Math.min(Math.max(val, 0), limits[dedo]);
+      s.value = val;
+      updateValue(dedo, val);
+      moveFinger(dedo, val);
+    }
 
-function sendCommand(cmd) {
-  fetch(`${esp32_ip}/${cmd}`).catch(console.error);
-}
+    async function iniciarRepeticiones() {
+      const dedos = Array.from(document.querySelectorAll('input[type=checkbox]:checked')).map(c => c.value);
+      const veces = document.getElementById("veces").value;
+      const tiempo = document.getElementById("time").value;
+      const unidad = document.getElementById("unit").value;
+      const dedosParam = dedos.length ? dedos.join(",") : "todos";
+      await sendCommand(`/repetir?dedos=${dedosParam}&veces=${veces}&tiempo=${tiempo}&unidad=${unidad}`);
+    }
 
-// 🎤 Reconocimiento de voz
-function startVoiceRecognition() {
-  const micStatus = document.getElementById("micStatus");
-  micStatus.innerText = "Escuchando...";
-  micStatus.style.color = "#ff0";
+    async function iniciarTerapia() {
+      const veces = document.getElementById("terapiaVeces").value;
+      const tiempo = document.getElementById("terapiaTiempo").value;
+      const unidad = document.getElementById("terapiaUnidad").value;
+      await sendCommand(`/iniciarTerapia?veces=${veces}&tiempo=${tiempo}&unidad=${unidad}`);
+    }
 
-  try {
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = "es-ES";
-    recognition.start();
-    recognition.onresult = event => {
-      const voiceText = event.results[0][0].transcript.toLowerCase();
-      micStatus.innerText = `Comando: "${voiceText}"`;
-      micStatus.style.color = "#00ff88";
-      interpretCommand(voiceText);
+    // === Reconocimiento de voz ===
+  function startVoice() {
+    const mic = document.getElementById("micBtn");
+    const estado = document.getElementById("vozEstado");
+
+    if (!("webkitSpeechRecognition" in window)) {
+      alert("Tu navegador no soporta reconocimiento de voz");
+      return;
+    }
+
+    const recog = new webkitSpeechRecognition();
+    recog.lang = "es-ES";
+    recog.continuous = true; // escucha continuo
+    recog.interimResults = false;
+
+    recog.onstart = () => {
+      mic.classList.add("active");
+      estado.textContent = "🎙️ Escuchando...";
     };
-    recognition.onerror = e => {
-      micStatus.innerText = "Error con el microfono o permisos";
-      micStatus.style.color = "red";
+
+    recog.onresult = (event) => {
+      const last = event.results.length - 1;
+      const t = event.results[last][0].transcript.toLowerCase().trim();
+      estado.textContent = `Comando detectado: "${t}"`;
+
+      if (t.includes("abrir")) sendCommand("/abrir");
+      else if (t.includes("cerrar")) sendCommand("/cerrar");
+      else if (t.includes("terapia")) sendCommand("/iniciarTerapia?veces=2&tiempo=3&unidad=s");
+      else if (t.includes("pausar") || t.includes("detener")) {
+        sendCommand("/pausar");
+        sendCommand("/detenerTerapia");
+      }
+      else if (t.includes("mover")) {
+        const match = t.match(/(pulgar|indice|medio|anular|meñique|menique).*?(\d+)/);
+        if (match) {
+          const dedo = match[1].replace("meñique","menique");
+          const ang = parseInt(match[2]);
+          fetch(`${espIP}/mover?dedo=${dedo}&angulo=${ang}`);
+        } else estado.textContent = "No entendí el dedo o ángulo";
+      } else estado.textContent = "Comando no reconocido";
     };
-    recognition.onend = () => micStatus.innerText = "";
-  } catch (err) {
-    micStatus.innerText = "Tu navegador no soporta reconocimiento de voz";
-    micStatus.style.color = "red";
+
+    recog.onerror = (e) => {
+      estado.textContent = "Error de voz: " + e.error;
+      mic.classList.remove("active");
+    };
+
+    recog.onend = () => {
+      mic.classList.remove("active");
+      estado.textContent = "Micrófono inactivo";
+    };
+
+    recog.start();
   }
-}
-
-// 🧠 Analisis del comando de voz
-function interpretCommand(text) {
-  if (text.includes("abrir")) return sendCommand("abrir");
-  if (text.includes("cerrar")) return sendCommand("cerrar");
-
-  const moveMatch = text.match(/mover (\w+) a (\d+) grados(?: (\d+) veces cada (\d+) (segundos|minutos|horas))?/);
-  if (moveMatch) {
-    const [, finger, angle, reps, delay, unit] = moveMatch;
-    let delayMs = 1000;
-    if (unit === "minutos") delayMs = 60000;
-    if (unit === "horas") delayMs = 3600000;
-    const repetitions = reps ? parseInt(reps) : 1;
-    const interval = delay ? delayMs * parseInt(delay) : 1000;
-
-    let count = 0;
-    const intervalId = setInterval(() => {
-      moveFinger(finger, angle);
-      count++;
-      if (count >= repetitions) clearInterval(intervalId);
-    }, interval);
-  }
-}
 </script>
-
 </body>
 </html>
